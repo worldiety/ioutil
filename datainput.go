@@ -5,188 +5,141 @@ import (
 	"io"
 )
 
-var _ DataInput = (*DataInputReader)(nil)
+var _ DataInput = (*dataInputImpl)(nil)
 
 // A DataInput provides helpers for reading bytes from a binary stream and interprets the data for any primitive Go
-// type.
+// type. A DataInput is always tied to a specific endianness. A DataInput should not be considered thread safe.
 type DataInput interface {
 
-	// ReadUTF8 reads a 2 byte prefixed
-	ReadUTF8() string
+	// ReadBlob reads a prefixed byte slice
+	ReadBlob(p PrefixType) []byte
+
+	// ReadUTF8 reads a prefixed unmodified utf8 string sequence
+	ReadUTF8(p PrefixType) string
 
 	ReadBool() bool
 
-	ReadUInt16(order binary.ByteOrder) uint16
-	ReadUInt16LE() uint16
-	ReadUInt16BE() uint16
+	ReadUint8() uint8
 
-	ReadUInt32(order binary.ByteOrder) uint32
-	ReadUInt32LE() uint32
-	ReadUInt32BE() uint32
+	ReadUInt16() uint16
 
-	ReadUInt64(order binary.ByteOrder) uint64
-	ReadUInt64LE() uint64
-	ReadUInt64BE() uint64
+	ReadUInt24() uint32
 
-	ReadInt16(order binary.ByteOrder) int16
-	ReadInt16LE() int16
-	ReadInt16BE() int16
+	ReadUInt32() uint32
 
-	ReadInt32(order binary.ByteOrder) int32
-	ReadInt32LE() int32
-	ReadInt32BE() int32
+	ReadUInt64() uint64
 
-	ReadInt64(order binary.ByteOrder) int64
-	ReadInt64LE() int64
-	ReadInt64BE() int64
+	ReadInt16() int16
 
-	ReadByte() byte
-	Read(buf []byte) (int, error)
+	ReadInt24() int32
 
-	// ReadFull reads exactly len(b) bytes
+	ReadInt32() int32
+
+	ReadInt64() int64
+
+	ReadUvarint() uint64
+
+	ReadVarint() int64
+
+	ReadFloat32() float32
+
+	ReadFloat64() float64
+
+	// ReadFull reads exactly len(b) bytes. If an error occurs returns the number of read bytes.
 	ReadFull(b []byte) int
 
 	// Error returns the first occurred error. Each call to any Read* method may cause an error.
 	Error() error
+
+	io.Reader
+	io.ByteReader
 }
 
-type DataInputReader struct {
-	buf8     []byte
-	in       io.Reader
-	firstErr error
+func NewDataInput(order binary.ByteOrder, reader io.Reader) DataInput {
+	return dataInputImpl{decoder: NewDecoder(reader), order: order}
 }
 
-func NewDataInputReader(in io.Reader) *DataInputReader {
-	return &DataInputReader{
-		buf8: make([]byte, 8),
-		in:   in,
-	}
+type dataInputImpl struct {
+	order   binary.ByteOrder
+	decoder *Decoder
 }
 
-func (r *DataInputReader) ReadBool() bool {
-	return r.ReadByte() != 0
+func (d dataInputImpl) ReadFloat32() float32 {
+	return d.decoder.ReadFloat32(d.order)
 }
 
-func (r *DataInputReader) ReadInt16(order binary.ByteOrder) int16 {
-	return int16(r.ReadUInt16(order))
+func (d dataInputImpl) ReadFloat64() float64 {
+	return d.decoder.ReadFloat64(d.order)
 }
 
-func (r *DataInputReader) ReadInt16LE() int16 {
-	return int16(r.ReadUInt16(binary.LittleEndian))
+func (d dataInputImpl) ReadUint8() uint8 {
+	return d.ReadUint8()
 }
 
-func (r *DataInputReader) ReadInt16BE() int16 {
-	return int16(r.ReadUInt16(binary.BigEndian))
+func (d dataInputImpl) ReadByte() (byte, error) {
+	return d.ReadByte()
 }
 
-func (r *DataInputReader) ReadInt32(order binary.ByteOrder) int32 {
-	return int32(r.ReadUInt32(order))
+func (d dataInputImpl) ReadBlob(p PrefixType) []byte {
+	return d.decoder.ReadBlob(d.order, p)
 }
 
-func (r *DataInputReader) ReadInt32LE() int32 {
-	return int32(r.ReadUInt32(binary.LittleEndian))
+func (d dataInputImpl) ReadUTF8(p PrefixType) string {
+	return d.decoder.ReadUTF8(d.order, p)
 }
 
-func (r *DataInputReader) ReadInt32BE() int32 {
-	return int32(r.ReadUInt32(binary.BigEndian))
+func (d dataInputImpl) ReadBool() bool {
+	return d.decoder.ReadBool()
 }
 
-func (r *DataInputReader) ReadInt64(order binary.ByteOrder) int64 {
-	return int64(r.ReadUInt64(order))
+func (d dataInputImpl) ReadUInt16() uint16 {
+	return d.decoder.ReadUInt16(d.order)
 }
 
-func (r *DataInputReader) ReadInt64LE() int64 {
-	return int64(r.ReadUInt64(binary.LittleEndian))
+func (d dataInputImpl) ReadUInt24() uint32 {
+	return d.decoder.ReadUInt24(d.order)
 }
 
-func (r *DataInputReader) ReadInt64BE() int64 {
-	return int64(r.ReadUInt64(binary.BigEndian))
+func (d dataInputImpl) ReadUInt32() uint32 {
+	return d.decoder.ReadUInt32(d.order)
 }
 
-func (r *DataInputReader) ReadUInt16(order binary.ByteOrder) uint16 {
-	tmp := r.buf8[:2]
-	_, err := io.ReadFull(r.in, tmp)
-	if r.noteErr(err) {
-		return 0
-	}
-	return order.Uint16(tmp)
+func (d dataInputImpl) ReadUInt64() uint64 {
+	return d.decoder.ReadUInt64(d.order)
 }
 
-func (r *DataInputReader) ReadUInt16LE() uint16 {
-	return r.ReadUInt16(binary.LittleEndian)
+func (d dataInputImpl) ReadInt16() int16 {
+	return d.decoder.ReadInt16(d.order)
 }
 
-func (r *DataInputReader) ReadUInt16BE() uint16 {
-	return r.ReadUInt16(binary.BigEndian)
+func (d dataInputImpl) ReadInt24() int32 {
+	return d.decoder.ReadInt24(d.order)
 }
 
-func (r *DataInputReader) ReadUInt32(order binary.ByteOrder) uint32 {
-	tmp := r.buf8[:4]
-	_, err := io.ReadFull(r.in, tmp)
-	if r.noteErr(err) {
-		return 0
-	}
-	return order.Uint32(tmp)
+func (d dataInputImpl) ReadInt32() int32 {
+	return d.decoder.ReadInt32(d.order)
 }
 
-func (r *DataInputReader) ReadUInt32LE() uint32 {
-	return r.ReadUInt32(binary.LittleEndian)
+func (d dataInputImpl) ReadInt64() int64 {
+	return d.decoder.ReadInt64(d.order)
 }
 
-func (r *DataInputReader) ReadUInt32BE() uint32 {
-	return r.ReadUInt32(binary.BigEndian)
+func (d dataInputImpl) ReadUvarint() uint64 {
+	return d.decoder.ReadUvarint()
 }
 
-func (r *DataInputReader) noteErr(err error) bool {
-	if err != nil && r.firstErr == nil {
-		r.firstErr = err
-	}
-	if r.firstErr != nil {
-		return true
-	}
-	return false
+func (d dataInputImpl) ReadVarint() int64 {
+	return d.decoder.ReadVarint()
 }
 
-func (r *DataInputReader) ReadUInt64(order binary.ByteOrder) uint64 {
-	_, err := io.ReadFull(r.in, r.buf8)
-	if r.noteErr(err) {
-		return 0
-	}
-	return order.Uint64(r.buf8)
+func (d dataInputImpl) Read(buf []byte) (int, error) {
+	return d.decoder.Read(buf)
 }
 
-func (r *DataInputReader) ReadUInt64LE() uint64 {
-	return r.ReadUInt64(binary.LittleEndian)
+func (d dataInputImpl) ReadFull(b []byte) int {
+	return d.decoder.ReadFull(b)
 }
 
-func (r *DataInputReader) ReadUInt64BE() uint64 {
-	return r.ReadUInt64(binary.BigEndian)
-}
-
-func (r *DataInputReader) ReadFull(b []byte) int {
-	n, err := io.ReadFull(r.in, b)
-	if r.noteErr(err) {
-		return n
-	}
-	return n
-}
-
-func (r *DataInputReader) ReadByte() byte {
-	tmp := r.buf8[:1]
-	_, err := io.ReadFull(r.in, tmp)
-	if r.noteErr(err) {
-		return 0
-	}
-	return tmp[0]
-}
-
-// Directly delegates the read
-func (r *DataInputReader) Read(buf []byte) (int, error) {
-	n, err := r.in.Read(buf)
-	r.noteErr(err)
-	return n, err
-}
-
-func (r *DataInputReader) Error() error {
-	return r.firstErr
+func (d dataInputImpl) Error() error {
+	return d.decoder.Error()
 }
