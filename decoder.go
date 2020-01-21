@@ -11,41 +11,58 @@ import (
 
 // A Decoders implements various decoding helpers for Little Endian and Big Endian. It may optimize some
 // paths in the future, so that the generic call with byte order may be slower than the direct invocation.
-// The implementation reuses an internal buffer and is not thread safe.
+// The implementation reuses an internal buffer to avoid heap allocations and is therefore not thread safe.
 type Decoder struct {
-	buf8     []byte
-	in       io.Reader
-	firstErr error
+	buf8        []byte
+	in          io.Reader
+	firstErr    error
+	failOnError bool
 }
 
-func NewDecoder(in io.Reader) *Decoder {
+// Wraps a reader to provide the decoder functions. If failOnError is true, any subsequent call after an error occurred
+// will result in a no-op call, so that no more reads will be issued to the wrapped reader.
+func NewDecoder(in io.Reader, failOnError bool) *Decoder {
 	return &Decoder{
 		buf8: make([]byte, 8),
 		in:   in,
 	}
 }
 
-func (r *Decoder) ReadBlob(order binary.ByteOrder, storageClass PrefixType) []byte {
+// Resets removes any error state.
+func (r *Decoder) Reset() {
+	r.firstErr = nil
+}
+
+func (r *Decoder) quickFail() bool {
+	return r.failOnError && r.firstErr != nil
+}
+
+func (r *Decoder) ReadBlob(order binary.ByteOrder, storageClass IntSize) []byte {
+	if r.quickFail() {
+		return nil
+	}
 	var bytesToRead uint64
 	switch storageClass {
-	case Tiny:
+	case I8:
 		bytesToRead = uint64(r.ReadUint8())
-	case Small:
+	case I16:
 		bytesToRead = uint64(r.ReadUInt16(order))
-	case Medium:
+	case I24:
 		bytesToRead = uint64(r.ReadUInt24(order))
-	case Long:
+	case I32:
 		bytesToRead = uint64(r.ReadUInt32(order))
-	case Large:
+	case I40:
+		bytesToRead = r.ReadUInt40(order)
+	case I64:
 		bytesToRead = r.ReadUInt64(order)
-	case Var:
+	case IVar:
 		t, err := binary.ReadUvarint(r)
 		if r.noteErr(err) {
 			return nil
 		}
 		bytesToRead = t
 	default:
-		panic("invalid PrefixType " + strconv.Itoa(int(storageClass)))
+		panic("invalid IntSize " + strconv.Itoa(int(storageClass)))
 	}
 
 	if bytesToRead > MaxInt {
@@ -61,6 +78,9 @@ func (r *Decoder) ReadBlob(order binary.ByteOrder, storageClass PrefixType) []by
 }
 
 func (r *Decoder) ReadUvarint() uint64 {
+	if r.quickFail() {
+		return 0
+	}
 	t, err := binary.ReadUvarint(r)
 	if r.noteErr(err) {
 		return 0
@@ -69,6 +89,9 @@ func (r *Decoder) ReadUvarint() uint64 {
 }
 
 func (r *Decoder) ReadVarint() int64 {
+	if r.quickFail() {
+		return 0
+	}
 	t, err := binary.ReadVarint(r)
 	if r.noteErr(err) {
 		return 0
@@ -76,17 +99,17 @@ func (r *Decoder) ReadVarint() int64 {
 	return t
 }
 
-func (r *Decoder) ReadBlobLE(p PrefixType) []byte {
+func (r *Decoder) ReadBlobLE(p IntSize) []byte {
 	return r.ReadBlob(binary.LittleEndian, p)
 }
 
-func (r *Decoder) ReadBlobBE(p PrefixType) []byte {
+func (r *Decoder) ReadBlobBE(p IntSize) []byte {
 	return r.ReadBlob(binary.BigEndian, p)
 }
 
 // ReadUTF8 provides a type safe conversion to avoid another heap allocation for the
 // returned string.
-func (r *Decoder) ReadUTF8(order binary.ByteOrder, p PrefixType) string {
+func (r *Decoder) ReadUTF8(order binary.ByteOrder, p IntSize) string {
 	tmp := r.ReadBlob(order, p) // do not change tmp anymore
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
 	return *(*string)(unsafe.Pointer(&tmp))
@@ -145,6 +168,10 @@ func (r *Decoder) ReadInt64BE() int64 {
 }
 
 func (r *Decoder) ReadUInt16(order binary.ByteOrder) uint16 {
+	if r.quickFail() {
+		return 0
+	}
+
 	tmp := r.buf8[:2]
 	_, err := io.ReadFull(r.in, tmp)
 	if r.noteErr(err) {
@@ -162,6 +189,10 @@ func (r *Decoder) ReadUInt16BE() uint16 {
 }
 
 func (r *Decoder) ReadUInt24(order binary.ByteOrder) uint32 {
+	if r.quickFail() {
+		return 0
+	}
+
 	tmp := r.buf8[:3]
 	_, err := io.ReadFull(r.in, tmp)
 	if r.noteErr(err) {
@@ -187,6 +218,10 @@ func (r *Decoder) ReadUInt24BE() uint32 {
 }
 
 func (r *Decoder) ReadUInt32(order binary.ByteOrder) uint32 {
+	if r.quickFail() {
+		return 0
+	}
+
 	tmp := r.buf8[:4]
 	_, err := io.ReadFull(r.in, tmp)
 	if r.noteErr(err) {
@@ -203,6 +238,35 @@ func (r *Decoder) ReadUInt32BE() uint32 {
 	return r.ReadUInt32(binary.BigEndian)
 }
 
+func (r *Decoder) ReadUInt40(order binary.ByteOrder) uint64 {
+	if r.quickFail() {
+		return 0
+	}
+
+	tmp := r.buf8[:4]
+	_, err := io.ReadFull(r.in, tmp)
+	if r.noteErr(err) {
+		return 0
+	}
+	// this is to slow
+	switch order.String() {
+	case binary.BigEndian.String():
+		return uint40BE(tmp)
+	case binary.LittleEndian.String():
+		return uint40LE(tmp)
+	default:
+		panic("unsupported byte order: " + order.String())
+	}
+}
+
+func (r *Decoder) ReadUInt40LE() uint64 {
+	return r.ReadUInt40(binary.LittleEndian)
+}
+
+func (r *Decoder) ReadUInt40BE() uint64 {
+	return r.ReadUInt40(binary.BigEndian)
+}
+
 func (r *Decoder) noteErr(err error) bool {
 	if err != nil && r.firstErr == nil {
 		r.firstErr = err
@@ -214,6 +278,10 @@ func (r *Decoder) noteErr(err error) bool {
 }
 
 func (r *Decoder) ReadUInt64(order binary.ByteOrder) uint64 {
+	if r.quickFail() {
+		return 0
+	}
+
 	_, err := io.ReadFull(r.in, r.buf8)
 	if r.noteErr(err) {
 		return 0
@@ -237,7 +305,11 @@ func (r *Decoder) ReadFull(b []byte) int {
 	return n
 }
 
-func (r *Decoder) ReadUint8() byte {
+func (r *Decoder) ReadUint8() uint8 {
+	if r.quickFail() {
+		return 0
+	}
+
 	tmp := r.buf8[:1]
 	_, err := io.ReadFull(r.in, tmp)
 	if r.noteErr(err) {
@@ -246,7 +318,15 @@ func (r *Decoder) ReadUint8() byte {
 	return tmp[0]
 }
 
+func (r *Decoder) ReadInt8() int8 {
+	return int8(r.ReadUint8())
+}
+
 func (r *Decoder) ReadByte() (byte, error) {
+	if r.quickFail() {
+		return 0, r.firstErr
+	}
+
 	tmp := r.buf8[:1]
 	_, err := io.ReadFull(r.in, tmp)
 	if r.noteErr(err) {
@@ -257,6 +337,10 @@ func (r *Decoder) ReadByte() (byte, error) {
 
 // Directly delegates the read
 func (r *Decoder) Read(buf []byte) (int, error) {
+	if r.quickFail() {
+		return 0, r.firstErr
+	}
+
 	n, err := r.in.Read(buf)
 	r.noteErr(err)
 	return n, err
@@ -290,4 +374,16 @@ func (r *Decoder) ReadFloat32BE() float32 {
 
 func (r *Decoder) ReadFloat32LE() float32 {
 	return r.ReadFloat32(binary.LittleEndian)
+}
+
+func (r *Decoder) ReadComplex64(order binary.ByteOrder) complex64 {
+	rnum := r.ReadFloat32(order)
+	inum := r.ReadFloat32(order)
+	return complex(rnum, inum)
+}
+
+func (r *Decoder) ReadComplex128(order binary.ByteOrder) complex128 {
+	rnum := r.ReadFloat64(order)
+	inum := r.ReadFloat64(order)
+	return complex(rnum, inum)
 }
