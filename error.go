@@ -16,25 +16,14 @@
 
 package ioutil
 
-import "io"
+import "fmt"
 
-type ByteReader struct {
-	buf    [1]byte
-	reader io.Reader
+// An IntegerOverflow is always returned, if an Encoder or Decoder recognizes an overflow when performing a conversion.
+type IntegerOverflow struct {
+	Val interface{}
+	Max    interface{}
 }
 
-func (b ByteReader) ReadByte() (byte, error) {
-	n, err := b.reader.Read(b.buf[:])
-	if err != nil {
-		return 0, err
-	}
-	if n != 1 {
-		return 0, io.EOF
-	}
-	return b.buf[0], nil
-}
-
-// NewByteReader wraps another io.Reader and allows
-func NewByteReader(r io.Reader) ByteReader {
-	return ByteReader{reader: r}
+func (i IntegerOverflow) Error() string {
+	return fmt.Sprintf("integer overflow: %d not in [0, %d]", i.Val, i.Max)
 }

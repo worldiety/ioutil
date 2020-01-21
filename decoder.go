@@ -1,3 +1,19 @@
+/*
+ * Copyright 2020 Torben Schinke
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package ioutil
 
 import (
@@ -267,16 +283,6 @@ func (r *Decoder) ReadUInt40BE() uint64 {
 	return r.ReadUInt40(binary.BigEndian)
 }
 
-func (r *Decoder) noteErr(err error) bool {
-	if err != nil && r.firstErr == nil {
-		r.firstErr = err
-	}
-	if r.firstErr != nil {
-		return true
-	}
-	return false
-}
-
 func (r *Decoder) ReadUInt64(order binary.ByteOrder) uint64 {
 	if r.quickFail() {
 		return 0
@@ -346,10 +352,6 @@ func (r *Decoder) Read(buf []byte) (int, error) {
 	return n, err
 }
 
-func (r *Decoder) Error() error {
-	return r.firstErr
-}
-
 func (r *Decoder) ReadFloat64(order binary.ByteOrder) float64 {
 	bits := r.ReadUInt64(order)
 	return math.Float64frombits(bits)
@@ -386,4 +388,18 @@ func (r *Decoder) ReadComplex128(order binary.ByteOrder) complex128 {
 	rnum := r.ReadFloat64(order)
 	inum := r.ReadFloat64(order)
 	return complex(rnum, inum)
+}
+
+func (r *Decoder) noteErr(err error) bool {
+	if err != nil && r.firstErr == nil {
+		r.firstErr = err
+	}
+	if r.firstErr != nil {
+		return true
+	}
+	return false
+}
+
+func (r *Decoder) Error() error {
+	return r.firstErr
 }
