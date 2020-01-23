@@ -18,6 +18,7 @@ package ioutil
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -25,8 +26,8 @@ import (
 	"unsafe"
 )
 
-// An Encoder implements various encoding helpers for Little Endian and Big Endian. It may optimize some
-// paths in the future, so that a generic call with byte order may be slower than the direct invocation.
+// An Encoder implements various encoding helpers for Little Endian and Big Endian. The *LE and *BE methods
+// are (probably) inline optimized, so the generic call has at least the vtable lookup.
 // The implementation reuses an internal buffer to avoid heap allocations and is therefore not thread safe.
 type Encoder struct {
 	buf8        []byte
@@ -45,14 +46,17 @@ func (e *Encoder) quickFail() bool {
 	return e.failOnError && e.firstErr != nil
 }
 
-// WriteArray just writes the slice out, without any prefix for the length.
+// WriteBytes just writes the slice out, without any prefix for the length.
 // If an error occurs returns the number of written bytes.
-func (e *Encoder) WriteArray(v []byte) int {
+func (e *Encoder) WriteBytes(v []byte) int {
 	if e.quickFail() {
 		return 0
 	}
 	n, err := e.out.Write(v)
 	e.noteErr(err)
+	if n != len(v) {
+		e.noteErr(fmt.Errorf("writer buffer underrun"))
+	}
 	return n
 }
 
@@ -102,7 +106,7 @@ func (e *Encoder) WriteBlob(o binary.ByteOrder, p IntSize, v []byte) {
 	default:
 		panic("unknown IntSize: " + strconv.Itoa(int(p)))
 	}
-	e.WriteArray(v)
+	e.WriteBytes(v)
 }
 
 // WriteUTF8 writes a prefixed unmodified utf8 string sequence of variable length.
@@ -124,32 +128,61 @@ func (e *Encoder) WriteUTF8(o binary.ByteOrder, p IntSize, v string) {
 
 // WriteBool writes one byte.
 func (e *Encoder) WriteBool(v bool) {
-
+	if v {
+		e.WriteUint8(1)
+	} else {
+		e.WriteUint8(0)
+	}
 }
 
 // WriteUint8 writes an unsigned byte
 func (e *Encoder) WriteUint8(v uint8) {
-
+	_ = e.WriteByte(v)
 }
 
 // WriteInt8 writes a signed byte
 func (e *Encoder) WriteInt8(v int8) {
-
+	e.WriteUint8(uint8(v))
 }
 
 // WriteUInt16 writes an unsigned 2 byte integer.
 func (e *Encoder) WriteUint16(o binary.ByteOrder, v uint16) {
+	tmp := e.buf8[:2]
+	o.PutUint16(tmp, v)
+	e.WriteBytes(tmp)
+}
 
+// WriteUInt16 writes an unsigned 2 byte integer in little endian order.
+func (e *Encoder) WriteUint16LE(v uint16) {
+	tmp := e.buf8[:2]
+	binary.LittleEndian.PutUint16(tmp, v)
+	e.WriteBytes(tmp)
+}
+
+// WriteUInt16 writes an unsigned 2 byte integer in big endian order.
+func (e *Encoder) WriteUint16BE(v uint16) {
+	tmp := e.buf8[:2]
+	binary.BigEndian.PutUint16(tmp, v)
+	e.WriteBytes(tmp)
 }
 
 // WriteInt16 writes a signed 2 byte integer.
 func (e *Encoder) WriteInt16(o binary.ByteOrder, v int16) {
+	e.WriteUint16(o, uint16(v))
+}
 
+// WriteInt16 writes a signed 2 byte integer in little endian order.
+func (e *Encoder) WriteInt16LE(v int16) {
+	e.WriteUint16LE(uint16(v))
+}
+
+// WriteInt16 writes a signed 2 byte integer in big endian order.
+func (e *Encoder) WriteInt16BE(v int16) {
+	e.WriteUint16BE(uint16(v))
 }
 
 // WriteUint24 writes an unsigned 3 byte integer.
 func (e *Encoder) WriteUint24(o binary.ByteOrder, v uint32) {
-
 }
 
 // WriteInt24 writes a signed 3 byte integer.

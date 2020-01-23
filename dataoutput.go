@@ -16,32 +16,19 @@
 
 package ioutil
 
-import "io"
+import (
+	"encoding/binary"
+	"io"
+)
 
 // A DataOutput provides helpers for writing bytes into a binary stream and interprets the data for any primitive Go
 // type. A DataOutput is always tied to a specific endianness. A DataOutput should not be considered thread safe.
 // As soon as any error occurred, any call is a no-op and will result in the same error state.
 //
-// Example:
-//
-//   writer, err := os.Open("file")
-//   if err != nil {
-//      return err
-//   }
-//   defer writer.close()
-//   dout := ioutil.NewDataOutput(binary.LittleEndian, writer)
-//   dout.WriteArray([]byte{'h', 'e', 'l', 'l', 'o'})
-//   dout.WriteInt32(1234)
-//   dout.WriteUTF8(ioutil.I8, "hello world")
-//   dout.WriteBool(true)
-//	 if dout.Error() != nil{
-//      return dout.Error()
-//	 }
-//
 type DataOutput interface {
-	// WriteArray just writes the slice out, without any prefix for the length.
+	// WriteBytes just writes the slice out, without any prefix for the length.
 	// If an error occurs returns the number of written bytes.
-	WriteArray(v []byte) int
+	WriteBytes(v []byte) int
 
 	// WriteBlob writes a prefixed byte slice of variable length.
 	WriteBlob(p IntSize, v []byte)
@@ -112,4 +99,8 @@ type DataOutput interface {
 
 	io.Writer
 	io.ByteWriter
+}
+
+func NewDataOutput(o binary.ByteOrder, writer io.Writer) DataOutput {
+	return nil
 }
