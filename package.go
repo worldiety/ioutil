@@ -14,6 +14,6 @@
  * limitations under the License.
  */
 
-// This ioutil package provides a bunch of io helpers, which shifts the "clearness" of some standard library design
+// Package ioutil provides a bunch of io helpers, which shifts the "clearness" of some standard library design
 // decisions towards a shorter and more comfortable code.
 package ioutil

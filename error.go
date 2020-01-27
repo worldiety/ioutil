@@ -21,7 +21,7 @@ import "fmt"
 // An IntegerOverflow is always returned, if an Encoder or Decoder recognizes an overflow when performing a conversion.
 type IntegerOverflow struct {
 	Val interface{}
-	Max    interface{}
+	Max interface{}
 }
 
 func (i IntegerOverflow) Error() string {

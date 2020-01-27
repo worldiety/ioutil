@@ -25,7 +25,7 @@ import (
 	"unsafe"
 )
 
-// A Decoders implements various decoding helpers for Little Endian and Big Endian. It may optimize some
+// A Decoder implements various decoding helpers for Little Endian and Big Endian. It may optimize some
 // paths in the future, so that the generic call with byte order may be slower than the direct invocation.
 // The implementation reuses an internal buffer to avoid heap allocations and is therefore not thread safe.
 type Decoder struct {
@@ -35,16 +35,18 @@ type Decoder struct {
 	failOnError bool
 }
 
-// Wraps a reader to provide the decoder functions. If failOnError is true, any subsequent call after an error occurred
-// will result in a no-op call, so that no more reads will be issued to the wrapped reader.
+// NewDecoder wraps a reader to provide the decoder functions. If failOnError is true, any subsequent call
+// after an error occurred  will result in a no-op call, so that no more reads will be
+// issued to the wrapped reader.
 func NewDecoder(in io.Reader, failOnError bool) *Decoder {
 	return &Decoder{
-		buf8: make([]byte, 8),
-		in:   in,
+		buf8:        make([]byte, 8),
+		in:          in,
+		failOnError: failOnError,
 	}
 }
 
-// Resets removes any error state.
+// Reset removes any error state.
 func (r *Decoder) Reset() {
 	r.firstErr = nil
 }
@@ -53,29 +55,33 @@ func (r *Decoder) quickFail() bool {
 	return r.failOnError && r.firstErr != nil
 }
 
-func (r *Decoder) ReadBlob(order binary.ByteOrder, storageClass IntSize) []byte {
+// ReadBlob reads a prefixed byte slice
+func (r *Decoder) ReadBlob(order ByteOrder, storageClass IntSize) []byte {
 	if r.quickFail() {
 		return nil
 	}
+
 	var bytesToRead uint64
+
 	switch storageClass {
 	case I8:
 		bytesToRead = uint64(r.ReadUint8())
 	case I16:
-		bytesToRead = uint64(r.ReadUInt16(order))
+		bytesToRead = uint64(r.ReadUint16(order))
 	case I24:
-		bytesToRead = uint64(r.ReadUInt24(order))
+		bytesToRead = uint64(r.ReadUint24(order))
 	case I32:
-		bytesToRead = uint64(r.ReadUInt32(order))
+		bytesToRead = uint64(r.ReadUint32(order))
 	case I40:
-		bytesToRead = r.ReadUInt40(order)
+		bytesToRead = r.ReadUint40(order)
 	case I64:
-		bytesToRead = r.ReadUInt64(order)
+		bytesToRead = r.ReadUint64(order)
 	case IVar:
 		t, err := binary.ReadUvarint(r)
 		if r.noteErr(err) {
 			return nil
 		}
+
 		bytesToRead = t
 	default:
 		panic("invalid IntSize " + strconv.Itoa(int(storageClass)))
@@ -90,200 +96,197 @@ func (r *Decoder) ReadBlob(order binary.ByteOrder, storageClass IntSize) []byte 
 
 	buf := make([]byte, int(bytesToRead))
 	r.ReadFull(buf)
+
 	return buf
 }
 
+// ReadBytes just reads a bunch of bytes into a newly allocated buffer
+func (r *Decoder) ReadBytes(len int) []byte {
+	if r.quickFail() {
+		return nil
+	}
+
+	buf := make([]byte, len)
+	n := r.ReadFull(buf)
+
+	return buf[0:n]
+}
+
+// ReadUvarint reads a variable length integer, up to 10 bytes using zig-zag protobuf encoding.
 func (r *Decoder) ReadUvarint() uint64 {
 	if r.quickFail() {
 		return 0
 	}
+
 	t, err := binary.ReadUvarint(r)
+
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return t
 }
 
+// ReadVarint reads a variable length and signed integer, up to 10 bytes using zig-zag protobuf encoding.
 func (r *Decoder) ReadVarint() int64 {
 	if r.quickFail() {
 		return 0
 	}
+
 	t, err := binary.ReadVarint(r)
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return t
-}
-
-func (r *Decoder) ReadBlobLE(p IntSize) []byte {
-	return r.ReadBlob(binary.LittleEndian, p)
-}
-
-func (r *Decoder) ReadBlobBE(p IntSize) []byte {
-	return r.ReadBlob(binary.BigEndian, p)
 }
 
 // ReadUTF8 provides a type safe conversion to avoid another heap allocation for the
 // returned string.
-func (r *Decoder) ReadUTF8(order binary.ByteOrder, p IntSize) string {
+func (r *Decoder) ReadUTF8(order ByteOrder, p IntSize) string {
 	tmp := r.ReadBlob(order, p) // do not change tmp anymore
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
 	return *(*string)(unsafe.Pointer(&tmp))
 }
 
+// ReadBool reads one byte and returns 0 if the byte is zero, otherwise true
 func (r *Decoder) ReadBool() bool {
 	return r.ReadUint8() != 0
 }
 
-func (r *Decoder) ReadInt16(order binary.ByteOrder) int16 {
-	return int16(r.ReadUInt16(order))
+// ReadInt16 reads 2 bytes and interprets them as signed
+func (r *Decoder) ReadInt16(order ByteOrder) int16 {
+	return int16(r.ReadUint16(order))
 }
 
-func (r *Decoder) ReadInt16LE() int16 {
-	return int16(r.ReadUInt16(binary.LittleEndian))
+// ReadInt24 reads 3 bytes and interprets them as signed
+func (r *Decoder) ReadInt24(order ByteOrder) int32 {
+	return int32(r.ReadUint24(order))
 }
 
-func (r *Decoder) ReadInt16BE() int16 {
-	return int16(r.ReadUInt16(binary.BigEndian))
+// ReadInt32 reads 4 bytes and interprets them as signed
+func (r *Decoder) ReadInt32(order ByteOrder) int32 {
+	return int32(r.ReadUint32(order))
 }
 
-func (r *Decoder) ReadInt32(order binary.ByteOrder) int32 {
-	return int32(r.ReadUInt32(order))
+// ReadInt40 reads 5 bytes and interprets them as signed
+func (r *Decoder) ReadInt40(order ByteOrder) int64 {
+	return int64(r.ReadUint32(order))
 }
 
-func (r *Decoder) ReadInt32LE() int32 {
-	return int32(r.ReadUInt32(binary.LittleEndian))
+// ReadInt48 reads 6 bytes and interprets them as signed
+func (r *Decoder) ReadInt48(order ByteOrder) int64 {
+	return int64(r.ReadUint32(order))
 }
 
-func (r *Decoder) ReadInt32BE() int32 {
-	return int32(r.ReadUInt32(binary.BigEndian))
+// ReadInt56 reads 7 bytes and interprets them as signed
+func (r *Decoder) ReadInt56(order ByteOrder) int64 {
+	return int64(r.ReadUint32(order))
 }
 
-func (r *Decoder) ReadInt24(order binary.ByteOrder) int32 {
-	return int32(r.ReadUInt24(order))
+// ReadInt64 reads 7 bytes and interprets them as signed
+func (r *Decoder) ReadInt64(order ByteOrder) int64 {
+	return int64(r.ReadUint64(order))
 }
 
-func (r *Decoder) ReadInt24LE() int32 {
-	return int32(r.ReadUInt24(binary.LittleEndian))
-}
-
-func (r *Decoder) ReadInt24BE() int32 {
-	return int32(r.ReadUInt24(binary.BigEndian))
-}
-
-func (r *Decoder) ReadInt64(order binary.ByteOrder) int64 {
-	return int64(r.ReadUInt64(order))
-}
-
-func (r *Decoder) ReadInt64LE() int64 {
-	return int64(r.ReadUInt64(binary.LittleEndian))
-}
-
-func (r *Decoder) ReadInt64BE() int64 {
-	return int64(r.ReadUInt64(binary.BigEndian))
-}
-
-func (r *Decoder) ReadUInt16(order binary.ByteOrder) uint16 {
+// ReadUint16 reads 2 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint16(order ByteOrder) uint16 {
 	if r.quickFail() {
 		return 0
 	}
 
 	tmp := r.buf8[:2]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return order.Uint16(tmp)
 }
 
-func (r *Decoder) ReadUInt16LE() uint16 {
-	return r.ReadUInt16(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadUInt16BE() uint16 {
-	return r.ReadUInt16(binary.BigEndian)
-}
-
-func (r *Decoder) ReadUInt24(order binary.ByteOrder) uint32 {
+// ReadUint24 reads 3 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint24(order ByteOrder) uint32 {
 	if r.quickFail() {
 		return 0
 	}
 
 	tmp := r.buf8[:3]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0
 	}
-	// this is to slow
-	switch order.String() {
-	case binary.BigEndian.String():
-		return uint24BE(tmp)
-	case binary.LittleEndian.String():
-		return uint24LE(tmp)
-	default:
-		panic("unsupported byte order: " + order.String())
-	}
+
+	return order.Uint24(tmp)
 }
 
-func (r *Decoder) ReadUInt24LE() uint32 {
-	return r.ReadUInt24(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadUInt24BE() uint32 {
-	return r.ReadUInt24(binary.BigEndian)
-}
-
-func (r *Decoder) ReadUInt32(order binary.ByteOrder) uint32 {
+// ReadUint32 reads 4 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint32(order ByteOrder) uint32 {
 	if r.quickFail() {
 		return 0
 	}
 
 	tmp := r.buf8[:4]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return order.Uint32(tmp)
 }
 
-func (r *Decoder) ReadUInt32LE() uint32 {
-	return r.ReadUInt32(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadUInt32BE() uint32 {
-	return r.ReadUInt32(binary.BigEndian)
-}
-
-func (r *Decoder) ReadUInt40(order binary.ByteOrder) uint64 {
+// ReadUint40 reads 5 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint40(order ByteOrder) uint64 {
 	if r.quickFail() {
 		return 0
 	}
 
-	tmp := r.buf8[:4]
+	tmp := r.buf8[:5]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0
 	}
-	// this is to slow
-	switch order.String() {
-	case binary.BigEndian.String():
-		return uint40BE(tmp)
-	case binary.LittleEndian.String():
-		return uint40LE(tmp)
-	default:
-		panic("unsupported byte order: " + order.String())
+
+	return order.Uint40(tmp)
+}
+
+// ReadUint48 reads 6 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint48(order ByteOrder) uint64 {
+	if r.quickFail() {
+		return 0
 	}
+
+	tmp := r.buf8[:6]
+	_, err := io.ReadFull(r.in, tmp)
+
+	if r.noteErr(err) {
+		return 0
+	}
+
+	return order.Uint48(tmp)
 }
 
-func (r *Decoder) ReadUInt40LE() uint64 {
-	return r.ReadUInt40(binary.LittleEndian)
+// ReadUint56 reads 7 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint56(order ByteOrder) uint64 {
+	if r.quickFail() {
+		return 0
+	}
+
+	tmp := r.buf8[:7]
+	_, err := io.ReadFull(r.in, tmp)
+
+	if r.noteErr(err) {
+		return 0
+	}
+
+	return order.Uint56(tmp)
 }
 
-func (r *Decoder) ReadUInt40BE() uint64 {
-	return r.ReadUInt40(binary.BigEndian)
-}
-
-func (r *Decoder) ReadUInt64(order binary.ByteOrder) uint64 {
+// ReadUint64 reads 8 bytes and interprets them as unsigned
+func (r *Decoder) ReadUint64(order ByteOrder) uint64 {
 	if r.quickFail() {
 		return 0
 	}
@@ -292,25 +295,21 @@ func (r *Decoder) ReadUInt64(order binary.ByteOrder) uint64 {
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return order.Uint64(r.buf8)
 }
 
-func (r *Decoder) ReadUInt64LE() uint64 {
-	return r.ReadUInt64(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadUInt64BE() uint64 {
-	return r.ReadUInt64(binary.BigEndian)
-}
-
+// ReadFull reads exactly len(b) bytes. If an error occurs returns the number of read bytes.
 func (r *Decoder) ReadFull(b []byte) int {
 	n, err := io.ReadFull(r.in, b)
 	if r.noteErr(err) {
 		return n
 	}
+
 	return n
 }
 
+// ReadUint8 reads one byte
 func (r *Decoder) ReadUint8() uint8 {
 	if r.quickFail() {
 		return 0
@@ -318,16 +317,20 @@ func (r *Decoder) ReadUint8() uint8 {
 
 	tmp := r.buf8[:1]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0
 	}
+
 	return tmp[0]
 }
 
+// ReadInt8 reads one byte
 func (r *Decoder) ReadInt8() int8 {
 	return int8(r.ReadUint8())
 }
 
+// ReadByte reads one byte
 func (r *Decoder) ReadByte() (byte, error) {
 	if r.quickFail() {
 		return 0, r.firstErr
@@ -335,9 +338,11 @@ func (r *Decoder) ReadByte() (byte, error) {
 
 	tmp := r.buf8[:1]
 	_, err := io.ReadFull(r.in, tmp)
+
 	if r.noteErr(err) {
 		return 0, err
 	}
+
 	return tmp[0], nil
 }
 
@@ -349,44 +354,35 @@ func (r *Decoder) Read(buf []byte) (int, error) {
 
 	n, err := r.in.Read(buf)
 	r.noteErr(err)
+
 	return n, err
 }
 
-func (r *Decoder) ReadFloat64(order binary.ByteOrder) float64 {
-	bits := r.ReadUInt64(order)
+// ReadFloat64 reads 8 bytes and interprets them as a float64 IEEE 754 4 byte bit sequence.
+func (r *Decoder) ReadFloat64(order ByteOrder) float64 {
+	bits := r.ReadUint64(order)
 	return math.Float64frombits(bits)
 }
 
-func (r *Decoder) ReadFloat64BE() float64 {
-	return r.ReadFloat64(binary.BigEndian)
-}
-
-func (r *Decoder) ReadFloat64LE() float64 {
-	return r.ReadFloat64(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadFloat32(order binary.ByteOrder) float32 {
-	bits := r.ReadUInt32(order)
+// ReadFloat32 reads 4 bytes and interprets them as a float32 IEEE 754 4 byte bit sequence.
+func (r *Decoder) ReadFloat32(order ByteOrder) float32 {
+	bits := r.ReadUint32(order)
 	return math.Float32frombits(bits)
 }
 
-func (r *Decoder) ReadFloat32BE() float32 {
-	return r.ReadFloat32(binary.BigEndian)
-}
-
-func (r *Decoder) ReadFloat32LE() float32 {
-	return r.ReadFloat32(binary.LittleEndian)
-}
-
-func (r *Decoder) ReadComplex64(order binary.ByteOrder) complex64 {
+// ReadComplex64 reads two float32 IEEE 754 4 byte bit sequences for the real and imaginary parts.
+func (r *Decoder) ReadComplex64(order ByteOrder) complex64 {
 	rnum := r.ReadFloat32(order)
 	inum := r.ReadFloat32(order)
+
 	return complex(rnum, inum)
 }
 
-func (r *Decoder) ReadComplex128(order binary.ByteOrder) complex128 {
+// ReadComplex128 reads two float64 IEEE 754 8 byte bit sequences for the real and imaginary parts.
+func (r *Decoder) ReadComplex128(order ByteOrder) complex128 {
 	rnum := r.ReadFloat64(order)
 	inum := r.ReadFloat64(order)
+
 	return complex(rnum, inum)
 }
 
@@ -394,12 +390,15 @@ func (r *Decoder) noteErr(err error) bool {
 	if err != nil && r.firstErr == nil {
 		r.firstErr = err
 	}
+
 	if r.firstErr != nil {
 		return true
 	}
+
 	return false
 }
 
+// Error returns the first occurred error. Each call to any Read* method may cause an error.
 func (r *Decoder) Error() error {
 	return r.firstErr
 }
