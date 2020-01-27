@@ -38,6 +38,6 @@ const (
 	// I64 storage class is 8 byte/64bit and max length is 9.223.372.036.854.775.806 bytes (8.388.608tb)
 	I64 IntSize = 8
 
-	// IVar storage class uses a varint encoding from 1-9 byte (8.388.608tb)
+	// IVar storage class uses a varint zigzag encoding from 1-10 byte (8.388.608tb)
 	IVar IntSize = 0
 )

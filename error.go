@@ -20,10 +20,11 @@ import "fmt"
 
 // An IntegerOverflow is always returned, if an Encoder or Decoder recognizes an overflow when performing a conversion.
 type IntegerOverflow struct {
-	Val interface{}
-	Max interface{}
+	Val interface{} // Val is the current value, which is out of range.
+	Max interface{} // Max is the maximum value, which Val should have.
 }
 
+// Error reports the current/max message
 func (i IntegerOverflow) Error() string {
 	return fmt.Sprintf("integer overflow: %d not in [0, %d]", i.Val, i.Max)
 }
