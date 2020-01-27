@@ -31,6 +31,7 @@ help: ## Shows this help
 
 
 setup: installGolint installGolangCi ## Installs golint and golangci-lint
+	${GO} mod tidy
 
 installGolint:
 	GOPATH=${TMP_GOPATH} && go get -u golang.org/x/lint/golint && go install golang.org/x/lint/golint
@@ -38,7 +39,6 @@ installGolint:
 
 installGolangCi:
 	mkdir -p ${TOOLSDIR}
-	GOBIN=${TOOLSDIR}/ &&  GO111MODULE=off && go install golang.org/x/lint/golint
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(TOOLSDIR)/ v1.23.1
 
 .DEFAULT_GOAL := help
