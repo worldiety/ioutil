@@ -21,3 +21,19 @@ func ExampleDataOutput() {
 		panic(dout.Error())
 	}
 }
+
+/*
+func ExampleFS() {
+	file := NewOpenOptions().
+		Read(true).
+		Write(true).
+		Create(true).
+		Open("foo.txt")
+	defer file.Close()
+
+	NewQuery().
+		Select().Files().From("/foo/bar").Recursively().
+		Where().Attribute().NotHidden().And().Name().EndsWidth(".jpg").
+		Execute()
+}
+*/
