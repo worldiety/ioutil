@@ -7,4 +7,6 @@ Summary:
 * Contains DataOutput and DataInput interfaces and implementations to conveniently work with byte order specific
 serialization of numbers and byte slices.
 * Provides support for reading and writing 24-, 40-, 48- and 56-bit uint and int support. 
+* The ByteSeeker implements an in-memory io.Reader, io.Writer and io.Seeker. The missing io.WriteSeeker in the 
+standard lib.
 
