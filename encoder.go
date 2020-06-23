@@ -304,6 +304,7 @@ func (e *Encoder) WriteByte(c byte) error {
 	}
 
 	tmp := e.buf10[:1]
+	tmp[0] = c
 	_, err := e.out.Write(tmp)
 	e.noteErr(err)
 
