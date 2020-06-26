@@ -534,6 +534,18 @@ func (t *TypedLittleEndianBuffer) ReadBlob32(dst []byte) int {
 	return f.ReadBlob32(dst)
 }
 
+func (t *TypedLittleEndianBuffer) ReadFloat32() float32 {
+	f := (*LittleEndianBuffer)(t)
+	t.assertType(TFloat32)
+	return f.ReadFloat32()
+}
+
+func (t *TypedLittleEndianBuffer) ReadFloat64() float64 {
+	f := (*LittleEndianBuffer)(t)
+	t.assertType(TFloat64)
+	return f.ReadFloat64()
+}
+
 func (t *TypedLittleEndianBuffer) assertType(kind Type) {
 	f := (*LittleEndianBuffer)(t)
 	x := f.ReadType()
