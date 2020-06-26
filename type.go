@@ -39,8 +39,51 @@ const (
 	maxTValid = TFloat64
 )
 
-func (d Type) Valid() bool {
+func (d Type) IsValid() bool {
 	return d >= minTValid && d <= maxTValid
+}
+
+func (d Type) IsNumber() bool {
+	switch d {
+	case TUint8:
+		fallthrough
+	case TUint16:
+		fallthrough
+	case TUint24:
+		fallthrough
+	case TUint32:
+		fallthrough
+	case TUint40:
+		fallthrough
+	case TUint48:
+		fallthrough
+	case TUint56:
+		fallthrough
+	case TUint64:
+		fallthrough
+	case TInt8:
+		fallthrough
+	case TInt16:
+		fallthrough
+	case TInt24:
+		fallthrough
+	case TInt32:
+		fallthrough
+	case TInt40:
+		fallthrough
+	case TInt48:
+		fallthrough
+	case TInt56:
+		fallthrough
+	case TInt64:
+		fallthrough
+	case TFloat32:
+		fallthrough
+	case TFloat64:
+		return true
+	default:
+		return false
+	}
 }
 
 func (d Type) String() string {
