@@ -41,7 +41,7 @@ func Test_Uint32(t *testing.T) {
 	tmp := make([]byte, 4)
 
 	for _, bo := range []ByteOrder{LittleEndian, BigEndian} {
-		for _, i := range []uint32{0x0, MaxUint8, MaxUint16, MaxUint24, MaxUint32, 42} {
+		for _, i := range []uint32{0x0, uint32(MaxUint8), uint32(MaxUint16), uint32(MaxUint24), uint32(MaxUint32), 42} {
 			bo.PutUint32(tmp, i)
 			i2 := bo.Uint32(tmp)
 
@@ -56,7 +56,7 @@ func Test_Uint40(t *testing.T) {
 	tmp := make([]byte, 5)
 
 	for _, bo := range []ByteOrder{LittleEndian, BigEndian} {
-		for _, i := range []uint64{0x0, MaxUint8, MaxUint16, MaxUint24, MaxUint32, MaxInt40, 42} {
+		for _, i := range []uint64{0x0, uint64(MaxUint8), uint64(MaxUint16), uint64(MaxUint24), uint64(MaxUint32), uint64(MaxInt40), 42} {
 			bo.PutUint40(tmp, i)
 			i2 := bo.Uint40(tmp)
 
@@ -71,7 +71,7 @@ func Test_Uint48(t *testing.T) {
 	tmp := make([]byte, 6)
 
 	for _, bo := range []ByteOrder{LittleEndian, BigEndian} {
-		for _, i := range []uint64{0x0, MaxUint8, MaxUint16, MaxUint24, MaxUint32, MaxInt40, MaxInt48, 42} {
+		for _, i := range []uint64{0x0, uint64(MaxUint8), uint64(MaxUint16), uint64(MaxUint24), uint64(MaxUint32), uint64(MaxInt40), uint64(MaxInt48), 42} {
 			bo.PutUint48(tmp, i)
 			i2 := bo.Uint48(tmp)
 
@@ -86,7 +86,7 @@ func Test_Uint56(t *testing.T) {
 	tmp := make([]byte, 7)
 
 	for _, bo := range []ByteOrder{LittleEndian, BigEndian} {
-		for _, i := range []uint64{0x0, MaxUint8, MaxUint16, MaxUint24, MaxUint32, MaxInt40, MaxInt48, MaxUint56, 42} {
+		for _, i := range []uint64{0x0, uint64(MaxUint8), uint64(MaxUint16), uint64(MaxUint24), uint64(MaxUint32), uint64(MaxInt40), uint64(MaxInt48), uint64(MaxUint56), 42} {
 			bo.PutUint56(tmp, i)
 			i2 := bo.Uint56(tmp)
 
@@ -102,8 +102,8 @@ func Test_Uint64(t *testing.T) {
 
 	for _, bo := range []ByteOrder{LittleEndian, BigEndian} {
 		for _, i := range []uint64{0x0,
-			MaxUint8, MaxUint16, MaxUint24, MaxUint32,
-			MaxInt40, MaxInt48, MaxUint56, MaxUint64, 42} {
+			uint64(MaxUint8), uint64(MaxUint16), uint64(MaxUint24), uint64(MaxUint32),
+			uint64(MaxInt40), uint64(MaxInt48), uint64(MaxUint56), uint64(MaxUint64), 42} {
 			bo.PutUint64(tmp, i)
 			i2 := bo.Uint64(tmp)
 

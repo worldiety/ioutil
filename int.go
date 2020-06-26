@@ -30,51 +30,51 @@ const (
 	MaxUint = 1<<UintSize - 1
 
 	// MaxInt8 is 127
-	MaxInt8 = 1<<7 - 1
+	MaxInt8 int8 = 1<<7 - 1
 	// MinInt8 is -128
-	MinInt8 = -1 << 7
+	MinInt8 int8 = -1 << 7
 	// MaxInt16 is 32767
-	MaxInt16 = 1<<15 - 1
+	MaxInt16 int16 = 1<<15 - 1
 	// MinInt16 is -32768
-	MinInt16 = -1 << 15
+	MinInt16 int16 = -1 << 15
 	// MaxInt24 is 8388607
-	MaxInt24 = 1<<23 - 1
+	MaxInt24 int32 = 1<<23 - 1
 	// MinInt24 is -8388608
-	MinInt24 = -1 << 23
+	MinInt24 int32 = -1 << 23
 	// MaxInt32 is 2147483647
-	MaxInt32 = 1<<31 - 1
+	MaxInt32 int32 = 1<<31 - 1
 	// MinInt32 is -2147483648
-	MinInt32 = -1 << 31
+	MinInt32 int32 = -1 << 31
 	// MaxInt40 is 549755813887
-	MaxInt40 = 1<<39 - 1
+	MaxInt40 int64 = 1<<39 - 1
 	// MinInt40 is -549755813888
-	MinInt40 = -1 << 39
+	MinInt40 int64 = -1 << 39
 	// MaxInt48 is 140737488355327
-	MaxInt48 = 1<<47 - 1
+	MaxInt48 int64 = 1<<47 - 1
 	// MinInt48 is -140737488355328
-	MinInt48 = -1 << 47
+	MinInt48 int64 = -1 << 47
 	// MaxInt56 is 36028797018963967
-	MaxInt56 = 1<<55 - 1
+	MaxInt56 int64 = 1<<55 - 1
 	// MinInt56 is -36028797018963968
-	MinInt56 = -1 << 55
+	MinInt56 int64 = -1 << 55
 	// MaxInt64 is 9223372036854775807
-	MaxInt64 = 1<<63 - 1
+	MaxInt64 int64 = 1<<63 - 1
 	// MinInt64 is -9223372036854775808
-	MinInt64 = -1 << 63
+	MinInt64 int64 = -1 << 63
 	// MaxUint8 is 255
-	MaxUint8 = 1<<8 - 1
+	MaxUint8 uint8 = 1<<8 - 1
 	// MaxUint16 is 65535
-	MaxUint16 = 1<<16 - 1
+	MaxUint16 uint16 = 1<<16 - 1
 	// MaxUint24 is 16777215
-	MaxUint24 = 1<<24 - 1
+	MaxUint24 uint32 = 1<<24 - 1
 	// MaxUint32 is 4294967295
-	MaxUint32 = 1<<32 - 1
+	MaxUint32 uint32 = 1<<32 - 1
 	// MaxUint40 is 1099511627775
-	MaxUint40 = 1<<40 - 1
+	MaxUint40 uint64 = 1<<40 - 1
 	// MaxUint48 is 281474976710655
-	MaxUint48 = 1<<48 - 1
+	MaxUint48 uint64 = 1<<48 - 1
 	// MaxUint56 is 72057594037927935
-	MaxUint56 = 1<<56 - 1
+	MaxUint56 uint64 = 1<<56 - 1
 	// MaxUint64 is 18446744073709551615
-	MaxUint64 = 1<<64 - 1
+	MaxUint64 uint64 = 1<<64 - 1
 )

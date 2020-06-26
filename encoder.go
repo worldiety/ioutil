@@ -96,7 +96,7 @@ func (e *Encoder) WriteBlob(o ByteOrder, p IntSize, v []byte) {
 
 		e.WriteUint16(o, uint16(len(v)))
 	case I24:
-		if len(v) > MaxUint24 {
+		if uint32(len(v)) > MaxUint24 {
 			e.noteErr(IntegerOverflow{Val: len(v), Max: MaxUint24})
 			return
 		}
@@ -110,7 +110,7 @@ func (e *Encoder) WriteBlob(o ByteOrder, p IntSize, v []byte) {
 
 		e.WriteUint32(o, uint32(len(v)))
 	case I40:
-		if len(v) > MaxUint40 {
+		if uint64(len(v)) > MaxUint40 {
 			e.noteErr(IntegerOverflow{Val: len(v), Max: MaxUint40})
 			return
 		}
