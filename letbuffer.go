@@ -8,7 +8,7 @@ type TypedLittleEndianBuffer LittleEndianBuffer
 
 // WriteFloat inspects the value and chooses automatically between int 1/2/3/4/5/6/7/8 byte signed or signed
 // integers or float32/float64. The concrete value is prefixed with a type, so the written length is 2-9 byte.
-// Floats with a fraction upto 1/1000 are encoded as float32.
+// Floats with a fraction upto 1/1000 and smaller than 16777215 are encoded as float32.
 func (t *TypedLittleEndianBuffer) WriteFloat(v float64) {
 	f := (*LittleEndianBuffer)(t)
 	const epsilon = 1e-9
@@ -21,7 +21,7 @@ func (t *TypedLittleEndianBuffer) WriteFloat(v float64) {
 
 	// looks like it fits into float32?
 	tmp := v * 1000
-	if _, frac := math.Modf(math.Abs(tmp)); frac < epsilon || frac > 1.0-epsilon {
+	if _, frac := math.Modf(math.Abs(tmp)); frac < epsilon || frac > 1.0-epsilon && v <= 16777215 {
 		f.WriteType(TFloat32)
 		f.WriteFloat32(float32(v))
 		return
