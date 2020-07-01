@@ -276,7 +276,7 @@ func (f *LittleEndianBuffer) ReadString8(strBuffer []byte) string {
 	vLen := f.ReadBlob8(strBuffer)
 	strBuffer = strBuffer[:vLen]
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
-	return *(*string)(unsafe.Pointer(&vLen))
+	return *(*string)(unsafe.Pointer(&strBuffer))
 }
 
 // WriteString16 writes the string into a blob, avoiding another allocation.
@@ -297,7 +297,7 @@ func (f *LittleEndianBuffer) ReadString16(strBuffer []byte) string {
 	vLen := f.ReadBlob16(strBuffer)
 	strBuffer = strBuffer[:vLen]
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
-	return *(*string)(unsafe.Pointer(&vLen))
+	return *(*string)(unsafe.Pointer(&strBuffer))
 }
 
 // WriteString24 writes the string into a blob, avoiding another allocation.
@@ -318,7 +318,7 @@ func (f *LittleEndianBuffer) ReadString24(strBuffer []byte) string {
 	vLen := f.ReadBlob24(strBuffer)
 	strBuffer = strBuffer[:vLen]
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
-	return *(*string)(unsafe.Pointer(&vLen))
+	return *(*string)(unsafe.Pointer(&strBuffer))
 }
 
 // WriteString32 writes the string into a blob, avoiding another allocation.
@@ -339,7 +339,7 @@ func (f *LittleEndianBuffer) ReadString32(strBuffer []byte) string {
 	vLen := f.ReadBlob32(strBuffer)
 	strBuffer = strBuffer[:vLen]
 	// this hack avoids another allocation for the string, see https://github.com/golang/go/issues/25484
-	return *(*string)(unsafe.Pointer(&vLen))
+	return *(*string)(unsafe.Pointer(&strBuffer))
 }
 
 // ReadFloat64 reads 8 bytes and interprets them as a float64 IEEE 754 4 byte bit sequence.
@@ -374,8 +374,6 @@ func (f *LittleEndianBuffer) WriteType(typ Type) {
 func (f *LittleEndianBuffer) ReadType() Type {
 	return Type(f.ReadUint8())
 }
-
-
 
 // Drain moves the buffer position the right amount of bytes without actually parsing it
 func (f *LittleEndianBuffer) Drain(t Type) int {
