@@ -254,6 +254,12 @@ func (t *TypedLittleEndianBuffer) WriteString(str string) {
 
 // ReadString reads a string8/16/24 or 32 string into the strBuffer and returns a mutable string from it.
 func (t *TypedLittleEndianBuffer) ReadString(strBuffer []byte) string {
+	if strBuffer == nil {
+		//ups, need to work around our mutable owned string approach
+		// otherwise we will get weired sigsegv somewhere later
+		tmp := make([]byte, 1024*64) // 64k
+		strBuffer = tmp
+	}
 	f := (*LittleEndianBuffer)(t)
 
 	typ := f.ReadType()
