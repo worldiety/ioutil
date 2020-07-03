@@ -375,6 +375,55 @@ func (f *LittleEndianBuffer) ReadType() Type {
 	return Type(f.ReadUint8())
 }
 
+var drainJumpTable = [29]int{
+	0, // undefined
+	1, // TUint8      Type = 1
+	2, // TUint16     Type = 2
+	3, // TUint24     Type = 3
+	4, // TUint32     Type = 4
+	5, // TUint40     Type = 5
+	6, // TUint48     Type = 6
+	7, // TUint56     Type = 7
+	8, // TUint64     Type = 8
+
+	1, // TInt8       Type = 9
+	2, // TInt16      Type = 10
+	3, // TInt24      Type = 11
+	4, // TInt32      Type = 12
+	5, // TInt40      Type = 13
+	6, // TInt48      Type = 14
+	7, // TInt56      Type = 15
+	8, // TInt64      Type = 16
+
+	0, // TBlob8      Type = 17
+	0, // TBlob16     Type = 18
+	0, // TBlob24     Type = 19
+	0, // TBlob32     Type = 20
+	0, // TString8    Type = 21
+	0, // TString16   Type = 22
+	0, // TString24   Type = 23
+	0, // TString32   Type = 24
+
+	4, // TFloat32    Type = 25
+	8, // TFloat64    Type = 26
+
+	8,  // TComplex64  Type = 27
+	16, // TComplex128 Type = 28
+
+}
+
+// DrainFast uses an inlineable jump table for fixed types and returns -1 for unsupported types. In that case, you
+// have to fallback into the slow Drain. See also https://github.com/golang/go/issues/17566
+func (f *LittleEndianBuffer) DrainFast(t Type) int {
+	x := drainJumpTable[t]
+	if x != 0 {
+		f.Pos += x
+		return x
+	}
+
+	return -1
+}
+
 // Drain moves the buffer position the right amount of bytes without actually parsing it
 func (f *LittleEndianBuffer) Drain(t Type) int {
 	oldPos := f.Pos
