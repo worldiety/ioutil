@@ -74,18 +74,10 @@ func (f *LittleEndianBuffer) WriteUint24(v uint32) {
 }
 
 func (f *LittleEndianBuffer) ReadUint32() uint32 {
-
-	b := f.Bytes[f.Pos:]
-	f.Pos += 4
-	_ = b[3] // bounds check hint to compiler; see golang.org/issue/14808
-	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
-
-	// the following is 50% slower
-	/*
-	_ = f.Bytes[3+f.Pos]
-	i := uint32(f.Bytes[f.Pos]) | uint32(f.Bytes[f.Pos+1])<<8 | uint32(f.Bytes[f.Pos+2])<<16 | uint32(f.Bytes[f.Pos+3])<<24
+	// TODO this is only correct on an LE machine
+	b := *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint32)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
 	f.Pos+=4
-	return i*/
+	return b
 }
 
 func (f *LittleEndianBuffer) WriteUint32(v uint32) {
