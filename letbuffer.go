@@ -561,5 +561,7 @@ func (t *TypedLittleEndianBuffer) assertType(kind Type) {
 		if x != kind {
 			panic("expected " + kind.String() + " but got " + x.String()) // this is not inlineable
 		}
+	}else{
+		t.Pos++
 	}
 }
