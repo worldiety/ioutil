@@ -1,6 +1,8 @@
 package ioutil
 
-import "math"
+import (
+	"math"
+)
 
 // TypedLittleEndianBuffer is a light weight helper to modify bytes within a buffer in little endian format and
 // each written type has a type prefix.
@@ -553,9 +555,11 @@ func (t *TypedLittleEndianBuffer) ReadFloat64() float64 {
 }
 
 func (t *TypedLittleEndianBuffer) assertType(kind Type) {
-	f := (*LittleEndianBuffer)(t)
-	x := f.ReadType()
-	if x != kind {
-		panic("expected " + kind.String() + " but got " + x.String())
+	if debug{
+		f := (*LittleEndianBuffer)(t)
+		x := f.ReadType()
+		if x != kind {
+			panic("expected " + kind.String() + " but got " + x.String()) // this is not inlineable
+		}
 	}
 }
