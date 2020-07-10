@@ -41,10 +41,17 @@ func (f *LittleEndianBuffer) ReadUint16() uint16 {
 	//return uint16(f.Bytes[f.postInc()]) | uint16(f.Bytes[f.postInc()])<<8
 
 	// the following is 40% faster in microbenchmark than all above
-	_ = f.Bytes[1+f.Pos]
+	/*_ = f.Bytes[1+f.Pos]
 	i := uint16(f.Bytes[f.Pos]) | uint16(f.Bytes[f.Pos+1])<<8
 	f.Pos+=2
 	return i
+	*/
+
+	// TODO this is only correct on an LE machine, but it has only 1/3 of instructions and no compares and no jumps
+	// TODO think about introducing a bounds check, to avoid invalid memory access
+	b := *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint16)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
+	f.Pos+=2
+	return b
 }
 
 func (f *LittleEndianBuffer) WriteUint16(v uint16) {
@@ -74,7 +81,8 @@ func (f *LittleEndianBuffer) WriteUint24(v uint32) {
 }
 
 func (f *LittleEndianBuffer) ReadUint32() uint32 {
-	// TODO this is only correct on an LE machine
+	// TODO this is only correct on an LE machine, but it has only 1/3 of instructions and no compares and no jumps
+	// TODO think about introducing a bounds check, to avoid invalid memory access
 	b := *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint32)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
 	f.Pos+=4
 	return b
