@@ -24,34 +24,22 @@ func (f *LittleEndianBuffer) WriteUint8(v uint8) {
 	f.Pos++
 }
 
-func (f *LittleEndianBuffer) postInc()int{
+func (f *LittleEndianBuffer) postInc() int {
 	i := f.Pos
 	f.Pos++
 	return i
 }
 
+// ReadUint16 reads the first 2 bytes. An optimized unsafe read may look like this:
+//  b := *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint16)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
+//	f.Pos+=2
+// Warning: such unsafe code relies on UB (undefined behavior) for unaligned access but x86 allows that with a
+// speed penalty (when crossing cache lines).
 func (f *LittleEndianBuffer) ReadUint16() uint16 {
-/*	b := f.Bytes[f.Pos:]
+	b := f.Bytes[f.Pos:]
 	f.Pos += 2
 	_ = b[1] // bounds check hint to compiler; see golang.org/issue/14808
 	return uint16(b[0]) | uint16(b[1])<<8
-*/
-
-	// equal or slower
-	//return uint16(f.Bytes[f.postInc()]) | uint16(f.Bytes[f.postInc()])<<8
-
-	// the following is 40% faster in microbenchmark than all above
-	/*_ = f.Bytes[1+f.Pos]
-	i := uint16(f.Bytes[f.Pos]) | uint16(f.Bytes[f.Pos+1])<<8
-	f.Pos+=2
-	return i
-	*/
-
-	// TODO this is only correct on an LE machine, but it has only 1/3 of instructions and no compares and no jumps
-	// TODO think about introducing a bounds check, to avoid invalid memory access
-	b := *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint16)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
-	f.Pos+=2
-	return b
 }
 
 func (f *LittleEndianBuffer) WriteUint16(v uint16) {
@@ -80,12 +68,16 @@ func (f *LittleEndianBuffer) WriteUint24(v uint32) {
 	b[2] = byte(v >> 16) //nolint:gomnd
 }
 
+// ReadUint32 reads the first 4 bytes. An optimized unsafe read may look like this:
+//  b := *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint32)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
+//	f.Pos+=4
+// Warning: such unsafe code relies on UB (undefined behavior) for unaligned access but x86 allows that with a
+// speed penalty (when crossing cache lines).
 func (f *LittleEndianBuffer) ReadUint32() uint32 {
-	// TODO this is only correct on an LE machine, but it has only 1/3 of instructions and no compares and no jumps
-	// TODO think about introducing a bounds check, to avoid invalid memory access
-	b := *(*uint32)(unsafe.Pointer(uintptr(unsafe.Pointer(*(**uint32)(unsafe.Pointer(&f.Bytes))))+uintptr(f.Pos)))
-	f.Pos+=4
-	return b
+	b := f.Bytes[f.Pos:]
+	f.Pos += 4
+	_ = b[3] // bounds check hint to compiler; see golang.org/issue/14808
+	return uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
 }
 
 func (f *LittleEndianBuffer) WriteUint32(v uint32) {
